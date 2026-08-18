@@ -35,6 +35,10 @@ def define_env(env):
     env.macro(macros.generate_tools_table, "MACROS___generate_tools_table")
     env.macro(macros.generate_members_table, "MACROS___generate_members_table")
     env.macro(macros.generate_beps_table, "MACROS___generate_beps_table")
+    env.macro(
+        macros.generate_beps_status_summary,
+        "MACROS___generate_beps_status_summary",
+    )
     env.macro(macros.generate_grants_table, "MACROS___generate_grants_table")
     env.macro(macros.generate_apps_table, "MACROS___generate_apps_table")
     env.macro(

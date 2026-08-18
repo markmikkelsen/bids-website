@@ -25,7 +25,9 @@ on the BIDS specification repository.
 Draft BEPs are in-progress document, typically in a Google Doc.
 This is dynamic and is grown and maintained at the discretion of a BEP Working Group.
 
-{{ MACROS___generate_beps_table(file="beps.yml", bep_type="draft") }}
+{{ MACROS___generate_beps_status_summary() }}
+
+{{ MACROS___generate_beps_table(file="beps.yml", bep_type="draft", status_file="beps_status.yml") }}
 
 --8<-- "tmp/draft_BEPs_timeline.html"
 

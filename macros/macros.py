@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from pathlib import Path
 
 import ruamel.yaml
@@ -13,6 +14,12 @@ ROOT = Path(__file__).parents[1]
 TEMPLATES_DIR = ROOT / "templates"
 
 WEBSITE_DATA_DIR = ROOT / "data"
+
+# Thresholds (in days since a BEP's Google Doc was last edited) used to
+# turn "modifiedTime" into a traffic-light activity badge on the BEPs
+# dashboard. See ``fetch_bep_status`` and ``generate_beps_status_summary``.
+FRESH_AFTER_DAYS = 30
+ACTIVE_AFTER_DAYS = 180
 
 
 def return_jinja_env() -> Environment:
@@ -48,16 +55,93 @@ def generate_members_table(file: str) -> str:
     return template.render(include=content[0])
 
 
-def generate_beps_table(file: str, bep_type: str | None = None) -> str:
+def load_bep_status(file: str = "beps_status.yml") -> dict:
+    """Load the cached Google Doc activity status for BEPs.
+
+    Returns an empty mapping if the cache doesn't exist yet or is empty,
+    so the dashboard degrades gracefully (everything shows as
+    "unknown") instead of failing the build.
+    """
+    input_file = WEBSITE_DATA_DIR / "beps" / file
+    if not input_file.exists():
+        return {}
+    return yaml.load(input_file) or {}
+
+
+def bep_activity_badge(last_modified: str | None) -> dict[str, str]:
+    """Turn a Google Doc's ``modifiedTime`` into a display badge.
+
+    Returns a dict with ``icon``, ``label`` and ``category`` so
+    templates only need to display values, not compute them.
+    """
+    if not last_modified:
+        return {
+            "icon": "\N{MEDIUM WHITE CIRCLE}",
+            "label": "Unknown",
+            "category": "unknown",
+        }
+
+    modified = datetime.fromisoformat(last_modified)
+    if modified.tzinfo is None:
+        modified = modified.replace(tzinfo=UTC)
+    days = (datetime.now(UTC) - modified).days
+
+    if days <= FRESH_AFTER_DAYS:
+        icon, category = "\N{LARGE GREEN CIRCLE}", "fresh"
+    elif days <= ACTIVE_AFTER_DAYS:
+        icon, category = "\N{LARGE YELLOW CIRCLE}", "active"
+    else:
+        icon, category = "\N{LARGE RED CIRCLE}", "stale"
+
+    label = f"Edited {days} day{'s' if days != 1 else ''} ago"
+    return {"icon": icon, "label": label, "category": category}
+
+
+def generate_beps_table(
+    file: str, bep_type: str | None = None, status_file: str | None = None
+) -> str:
     input_file = WEBSITE_DATA_DIR / "beps" / file
     content = yaml.load(input_file)
     if bep_type == "draft":
         content = [x for x in content if x["pull_request_created"] is None]
     elif bep_type == "proposed":
         content = [x for x in content if x["pull_request_created"] is not None]
+
+    status = {}
+    if status_file is not None:
+        raw_status = load_bep_status(status_file)
+        status = {
+            number: bep_activity_badge(entry.get("last_modified"))
+            for number, entry in raw_status.items()
+        }
+
     env = return_jinja_env()
     template = env.get_template("beps_table_md.jinja")
-    return template.render(include=content, bep_type=bep_type)
+    return template.render(include=content, bep_type=bep_type, status=status)
+
+
+def generate_beps_status_summary(
+    beps_file: str = "beps.yml", status_file: str = "beps_status.yml"
+) -> str:
+    """Render a one-line summary of how fresh the draft BEPs' docs are."""
+    beps = yaml.load(WEBSITE_DATA_DIR / "beps" / beps_file) or []
+    draft_numbers = [
+        bep["number"] for bep in beps if bep.get("pull_request_created") is None
+    ]
+
+    raw_status = load_bep_status(status_file)
+
+    counts = {"fresh": 0, "active": 0, "stale": 0, "unknown": 0}
+    checked_at = None
+    for number in draft_numbers:
+        entry = raw_status.get(number, {})
+        checked_at = checked_at or entry.get("checked_at")
+        badge = bep_activity_badge(entry.get("last_modified"))
+        counts[badge["category"]] += 1
+
+    env = return_jinja_env()
+    template = env.get_template("beps_status_summary_md.jinja")
+    return template.render(counts=counts, checked_at=checked_at)
 
 
 def generate_working_groups_table(file: str, status: str | None = None) -> str:

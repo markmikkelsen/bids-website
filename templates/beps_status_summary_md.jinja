@@ -1,0 +1,17 @@
+!!! info "Draft BEP Google Doc activity"
+
+    🟢 **{{ counts.fresh }}** edited in the last 30 days
+    &nbsp;·&nbsp;
+    🟡 **{{ counts.active }}** edited in the last 6 months
+    &nbsp;·&nbsp;
+    🔴 **{{ counts.stale }}** not edited in over 6 months
+    &nbsp;·&nbsp;
+    ⚪ **{{ counts.unknown }}** unknown (doc not publicly viewable, or not checked yet)
+
+    {% if checked_at %}
+    Last checked {{ checked_at }}. Refreshed weekly from each BEP's Google Doc; see
+    [tools/build/fetch_bep_doc_activity.py](https://github.com/bids-standard/bids-website/blob/main/tools/build/fetch_bep_doc_activity.py).
+    {% else %}
+    Not checked yet - this dashboard is refreshed weekly; see
+    [tools/build/fetch_bep_doc_activity.py](https://github.com/bids-standard/bids-website/blob/main/tools/build/fetch_bep_doc_activity.py).
+    {% endif %}

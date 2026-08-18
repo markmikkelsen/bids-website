@@ -1,0 +1,53 @@
+---
+name: BEP doc status
+
+on:
+    schedule:
+    -   cron: 0 8 * * 1
+    workflow_dispatch:
+
+concurrency:
+    group: ${{ github.workflow }}
+    cancel-in-progress: false
+
+# Force to use color
+env:
+    FORCE_COLOR: true
+
+jobs:
+    update-status:
+        # Scheduled/dispatched runs on forks won't have the secret anyway,
+        # but skip explicitly rather than fail noisily.
+        if: github.repository == 'bids-standard/bids-website'
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+        -   name: Checkout
+            uses: actions/checkout@v7
+
+        -   name: Set up Python
+            uses: astral-sh/setup-uv@v7
+            with:
+                python-version: 3.12
+
+        -   name: Install dependencies
+            run: uv sync --frozen
+
+        -   name: Fetch BEP Google Doc activity
+            run: uv run tools/build/fetch_bep_doc_activity.py
+            env:
+                GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+
+        -   name: Commit updated status
+            run: |
+                if git diff --quiet -- data/beps/beps_status.yml; then
+                    echo "No change in BEP doc status."
+                    exit 0
+                fi
+                git config user.name "github-actions[bot]"
+                git config user.email \
+                    "github-actions[bot]@users.noreply.github.com"
+                git add data/beps/beps_status.yml
+                git commit -m "chore: update BEP Google Doc activity status"
+                git push
