@@ -2,63 +2,100 @@
 # via the scheduled "BEP doc status" GitHub Action (see
 # .github/workflows/bep-doc-status.yml).
 #
-# DO NOT EDIT MANUALLY - changes will be overwritten on the next
+# Do not edit by hand - changes will be overwritten on the next
 # scheduled run. Keyed by BEP number, matching data/beps/beps.yml.
-
 '004':
   last_modified: '2026-08-17T19:22:09.091Z'
-  checked_at: '2026-08-18T23:01:25+00:00'
+  version: '7017142'
+  edits_since_last_check: 0
+  checked_at: '2026-08-19T00:33:05+00:00'
 '011':
   last_modified: '2024-04-01T09:14:21.046Z'
-  checked_at: '2026-08-18T23:01:25+00:00'
+  version: '6231'
+  edits_since_last_check: 0
+  checked_at: '2026-08-19T00:33:05+00:00'
 '014':
   last_modified: '2026-01-01T16:04:59.902Z'
-  checked_at: '2026-08-18T23:01:25+00:00'
+  version: '11032'
+  edits_since_last_check: 0
+  checked_at: '2026-08-19T00:33:05+00:00'
 '017':
   last_modified: '2026-07-19T10:59:56.975Z'
-  checked_at: '2026-08-18T23:01:25+00:00'
+  version: '183151'
+  edits_since_last_check: 0
+  checked_at: '2026-08-19T00:33:05+00:00'
 '021':
   last_modified: '2024-12-02T21:34:46.525Z'
-  checked_at: '2026-08-18T23:01:25+00:00'
+  version: '18307'
+  edits_since_last_check: 0
+  checked_at: '2026-08-19T00:33:05+00:00'
 '023':
   last_modified: '2026-06-25T12:40:26.960Z'
-  checked_at: '2026-08-18T23:01:25+00:00'
+  version: '10316'
+  edits_since_last_check: 0
+  checked_at: '2026-08-19T00:33:05+00:00'
 '024':
   last_modified: '2026-03-05T07:45:58.668Z'
-  checked_at: '2026-08-18T23:01:25+00:00'
+  version: '4452'
+  edits_since_last_check: 0
+  checked_at: '2026-08-19T00:33:05+00:00'
 '026':
   last_modified: '2024-04-21T03:08:23.450Z'
-  checked_at: '2026-08-18T23:01:25+00:00'
+  version: '1515'
+  edits_since_last_check: 0
+  checked_at: '2026-08-19T00:33:05+00:00'
 '028':
   last_modified: '2025-09-08T23:07:33.513Z'
-  checked_at: '2026-08-18T23:01:25+00:00'
+  version: '7515'
+  edits_since_last_check: 0
+  checked_at: '2026-08-19T00:33:05+00:00'
 '032':
   last_modified: '2026-01-05T05:59:51.427Z'
-  checked_at: '2026-08-18T23:01:25+00:00'
+  version: '19987'
+  edits_since_last_check: 0
+  checked_at: '2026-08-19T00:33:05+00:00'
 '033':
   last_modified: '2025-06-26T12:10:44.404Z'
-  checked_at: '2026-08-18T23:01:25+00:00'
+  version: '1525'
+  edits_since_last_check: 0
+  checked_at: '2026-08-19T00:33:05+00:00'
 '035':
   last_modified: '2026-08-05T03:42:31.223Z'
-  checked_at: '2026-08-18T23:01:25+00:00'
+  version: '2940'
+  edits_since_last_check: 0
+  checked_at: '2026-08-19T00:33:05+00:00'
 '036':
   last_modified: '2026-05-13T12:31:07.977Z'
-  checked_at: '2026-08-18T23:01:25+00:00'
+  version: '6484'
+  edits_since_last_check: 0
+  checked_at: '2026-08-19T00:33:05+00:00'
 '039':
   last_modified: '2026-06-12T12:44:02.132Z'
-  checked_at: '2026-08-18T23:01:25+00:00'
+  version: '16014'
+  edits_since_last_check: 0
+  checked_at: '2026-08-19T00:33:05+00:00'
 '040':
   last_modified: '2026-08-17T11:59:23.600Z'
-  checked_at: '2026-08-18T23:01:25+00:00'
+  version: '13261'
+  edits_since_last_check: 0
+  checked_at: '2026-08-19T00:33:05+00:00'
 '041':
   last_modified: '2026-04-22T18:44:49.869Z'
-  checked_at: '2026-08-18T23:01:25+00:00'
+  version: '1066'
+  edits_since_last_check: 0
+  checked_at: '2026-08-19T00:33:05+00:00'
 '043':
   last_modified: '2026-02-18T21:13:44.846Z'
-  checked_at: '2026-08-18T23:01:25+00:00'
+  version: '1251'
+  edits_since_last_check: 0
+  checked_at: '2026-08-19T00:33:05+00:00'
 '045':
   last_modified: '2026-06-04T14:10:15.086Z'
-  checked_at: '2026-08-18T23:01:25+00:00'
+  version: '10258'
+  edits_since_last_check: 0
+  checked_at: '2026-08-19T00:33:05+00:00'
 '046':
   last_modified: '2026-07-16T18:36:22.001Z'
-  checked_at: '2026-08-18T23:01:25+00:00'
+  version: '4361'
+  edits_since_last_check: 0
+  checked_at: '2026-08-19T00:33:05+00:00'

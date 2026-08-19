@@ -1,15 +1,22 @@
-"""Fetch last-edited timestamps for draft/proposed BEP Google Docs.
+"""Fetch activity signals for draft/proposed BEP Google Docs.
 
 Populates ``data/beps/beps_status.yml`` from the Google Drive API so the
-BEP dashboard (see ``docs/extensions/beps.md``) can show how recently
-each BEP's Google Doc has actually been touched.
+BEP dashboard (see ``docs/extensions/beps.md``) can show how recently -
+and how much - each BEP's Google Doc has actually been touched.
 
-This only reads file *metadata* (``modifiedTime``) via the Drive API,
-using a plain API key - it therefore only works for BEP Google Docs
-shared as "Anyone with the link can view" (or more open), which is the
-norm for BEP drafts. Docs that are not link-shared simply keep whatever
-status was last recorded (or stay unrecorded, which the dashboard shows
-as "unknown").
+This only reads file *metadata* via the Drive API, using a plain API
+key - it therefore only works for BEP Google Docs shared as "Anyone
+with the link can view" (or more open), which is the norm for BEP
+drafts. Docs that are not link-shared simply keep whatever status was
+last recorded (or stay unrecorded, which the dashboard shows as
+"unknown"). Two fields come out of this:
+
+- ``modifiedTime``: when the doc was last edited.
+- ``version``: an integer Google increments on every save. Comparing
+  it to the value recorded on the *previous* run gives a rough "how
+  many edits since we last checked" count - useful extra signal, and
+  still just an API key call (unlike comment counts or full revision
+  history, which need OAuth/a service account).
 
 Requires the ``GOOGLE_API_KEY`` environment variable, pointing at an API
 key with the Google Drive API enabled. Meant to run on a schedule (see
@@ -31,6 +38,7 @@ from ruamel.yaml import YAML
 
 DRIVE_FILE_ID_RE = re.compile(r"/d/([a-zA-Z0-9_-]+)")
 DRIVE_API_URL = "https://www.googleapis.com/drive/v3/files/{file_id}"
+DRIVE_FIELDS = "modifiedTime,version,name"
 REQUEST_TIMEOUT = 15
 
 yaml = YAML()
@@ -50,11 +58,15 @@ def extract_doc_id(google_doc_url: str) -> str | None:
     return match.group(1) if match else None
 
 
-def fetch_modified_time(doc_id: str, api_key: str) -> str | None:
-    """Return the doc's ``modifiedTime``, or ``None`` if it can't be read."""
+def fetch_doc_metadata(doc_id: str, api_key: str) -> dict | None:
+    """Return ``{"modified_time": ..., "version": ...}``, or ``None``.
+
+    ``version`` comes back from the Drive API as a stringified int64;
+    it is returned as-is here (still a string) and parsed by callers.
+    """
     response = requests.get(
         DRIVE_API_URL.format(file_id=doc_id),
-        params={"fields": "modifiedTime,name", "key": api_key},
+        params={"fields": DRIVE_FIELDS, "key": api_key},
         timeout=REQUEST_TIMEOUT,
     )
     if response.status_code != 200:
@@ -63,7 +75,32 @@ def fetch_modified_time(doc_id: str, api_key: str) -> str | None:
             f"(HTTP {response.status_code}): {response.text[:200]}[/yellow]"
         )
         return None
-    return response.json().get("modifiedTime")
+
+    data = response.json()
+    return {
+        "modified_time": data.get("modifiedTime"),
+        "version": data.get("version"),
+    }
+
+
+def compute_edits_since_last_check(
+    previous_version: str | None, current_version: str | None
+) -> int | None:
+    """Diff two Drive ``version`` values into an edit count.
+
+    Returns ``None`` when there's nothing to compare against (first
+    time this BEP is checked) or the values can't be parsed. A
+    negative diff would mean the doc's version went backwards, which
+    shouldn't happen - treated as "nothing to report" rather than
+    trusted.
+    """
+    if previous_version is None or current_version is None:
+        return None
+    try:
+        diff = int(current_version) - int(previous_version)
+    except (TypeError, ValueError):
+        return None
+    return diff if diff >= 0 else None
 
 
 def load_beps() -> list[dict]:
@@ -96,17 +133,28 @@ def update_status(beps: list[dict], api_key: str, status: dict) -> dict:
             )
             continue
 
-        modified_time = fetch_modified_time(doc_id, api_key)
-        if modified_time is None:
+        metadata = fetch_doc_metadata(doc_id, api_key)
+        if metadata is None or metadata["modified_time"] is None:
             # Keep whatever was last recorded rather than blanking it out -
             # a transient 403/404 shouldn't make a BEP look "unknown".
             continue
 
+        previous_version = status.get(number, {}).get("version")
+        edits_since_last_check = compute_edits_since_last_check(
+            previous_version, metadata["version"]
+        )
+
         status[number] = {
-            "last_modified": modified_time,
+            "last_modified": metadata["modified_time"],
+            "version": metadata["version"],
+            "edits_since_last_check": edits_since_last_check,
             "checked_at": checked_at,
         }
-        print(f"BEP {number}: last modified {modified_time}")
+        print(
+            f"BEP {number}: last modified {metadata['modified_time']} "
+            f"(version {metadata['version']}, "
+            f"+{edits_since_last_check} since last check)"
+        )
 
     return status
 

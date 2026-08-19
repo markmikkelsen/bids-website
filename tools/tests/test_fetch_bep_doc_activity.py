@@ -34,20 +34,25 @@ def test_extract_doc_id_returns_none_when_unparseable() -> None:
     assert mod.extract_doc_id("https://example.org/not-a-doc") is None
 
 
-def test_fetch_modified_time_success(requests_mock) -> None:
+def test_fetch_doc_metadata_success(requests_mock) -> None:
     mod = _load_module()
     doc_id = "abc123"
     requests_mock.get(
         mod.DRIVE_API_URL.format(file_id=doc_id),
-        json={"modifiedTime": "2026-01-15T10:00:00.000Z", "name": "BEP doc"},
+        json={
+            "modifiedTime": "2026-01-15T10:00:00.000Z",
+            "version": "42",
+            "name": "BEP doc",
+        },
     )
-    assert (
-        mod.fetch_modified_time(doc_id, api_key="fake-key")
-        == "2026-01-15T10:00:00.000Z"
-    )
+    metadata = mod.fetch_doc_metadata(doc_id, api_key="fake-key")
+    assert metadata == {
+        "modified_time": "2026-01-15T10:00:00.000Z",
+        "version": "42",
+    }
 
 
-def test_fetch_modified_time_returns_none_on_error(requests_mock) -> None:
+def test_fetch_doc_metadata_returns_none_on_error(requests_mock) -> None:
     mod = _load_module()
     doc_id = "private-doc"
     requests_mock.get(
@@ -55,7 +60,27 @@ def test_fetch_modified_time_returns_none_on_error(requests_mock) -> None:
         status_code=403,
         text="The caller does not have permission",
     )
-    assert mod.fetch_modified_time(doc_id, api_key="fake-key") is None
+    assert mod.fetch_doc_metadata(doc_id, api_key="fake-key") is None
+
+
+def test_compute_edits_since_last_check_diffs_versions() -> None:
+    mod = _load_module()
+    assert mod.compute_edits_since_last_check("10", "15") == 5
+
+
+def test_compute_edits_since_last_check_none_without_previous() -> None:
+    mod = _load_module()
+    assert mod.compute_edits_since_last_check(None, "15") is None
+
+
+def test_compute_edits_since_last_check_none_on_unparseable_values() -> None:
+    mod = _load_module()
+    assert mod.compute_edits_since_last_check("abc", "15") is None
+
+
+def test_compute_edits_since_last_check_none_when_version_decreases() -> None:
+    mod = _load_module()
+    assert mod.compute_edits_since_last_check("20", "15") is None
 
 
 def test_update_status_keeps_previous_entry_on_fetch_failure(
@@ -77,6 +102,8 @@ def test_update_status_keeps_previous_entry_on_fetch_failure(
     previous_status = {
         "099": {
             "last_modified": "2025-06-01T00:00:00.000Z",
+            "version": "3",
+            "edits_since_last_check": None,
             "checked_at": "2025-06-01T00:00:00+00:00",
         }
     }
@@ -86,6 +113,7 @@ def test_update_status_keeps_previous_entry_on_fetch_failure(
     )
 
     assert updated["099"]["last_modified"] == "2025-06-01T00:00:00.000Z"
+    assert updated["099"]["version"] == "3"
 
 
 def test_update_status_records_new_entry_on_success(requests_mock) -> None:
@@ -98,13 +126,47 @@ def test_update_status_records_new_entry_on_success(requests_mock) -> None:
     ]
     requests_mock.get(
         mod.DRIVE_API_URL.format(file_id="cafef00d"),
-        json={"modifiedTime": "2026-08-01T00:00:00.000Z"},
+        json={"modifiedTime": "2026-08-01T00:00:00.000Z", "version": "7"},
     )
 
     updated = mod.update_status(beps, api_key="fake-key", status={})
 
     assert updated["100"]["last_modified"] == "2026-08-01T00:00:00.000Z"
+    assert updated["100"]["version"] == "7"
+    # First time this BEP is checked - nothing to diff against yet.
+    assert updated["100"]["edits_since_last_check"] is None
     assert "checked_at" in updated["100"]
+
+
+def test_update_status_computes_edit_delta_against_previous_run(
+    requests_mock,
+) -> None:
+    mod = _load_module()
+    beps = [
+        {
+            "number": "101",
+            "google_doc": "https://docs.google.com/document/d/f00dcafe/",
+        }
+    ]
+    requests_mock.get(
+        mod.DRIVE_API_URL.format(file_id="f00dcafe"),
+        json={"modifiedTime": "2026-08-15T00:00:00.000Z", "version": "20"},
+    )
+    previous_status = {
+        "101": {
+            "last_modified": "2026-08-01T00:00:00.000Z",
+            "version": "12",
+            "edits_since_last_check": None,
+            "checked_at": "2026-08-01T00:00:00+00:00",
+        }
+    }
+
+    updated = mod.update_status(
+        beps, api_key="fake-key", status=previous_status
+    )
+
+    assert updated["101"]["version"] == "20"
+    assert updated["101"]["edits_since_last_check"] == 8
 
 
 def test_update_status_skips_beps_without_a_google_doc() -> None:

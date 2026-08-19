@@ -68,8 +68,15 @@ def load_bep_status(file: str = "beps_status.yml") -> dict:
     return yaml.load(input_file) or {}
 
 
-def bep_activity_badge(last_modified: str | None) -> dict[str, str]:
+def bep_activity_badge(
+    last_modified: str | None, edits_since_last_check: int | None = None
+) -> dict[str, str]:
     """Turn a Google Doc's ``modifiedTime`` into a display badge.
+
+    ``edits_since_last_check`` (a diff of the Drive API's ``version``
+    field between two runs of the fetcher) is appended to the label
+    when available, giving a rough sense of *how much* changed, not
+    just *whether* it did.
 
     Returns a dict with ``icon``, ``label`` and ``category`` so
     templates only need to display values, not compute them.
@@ -94,6 +101,13 @@ def bep_activity_badge(last_modified: str | None) -> dict[str, str]:
         icon, category = "\N{LARGE RED CIRCLE}", "stale"
 
     label = f"Edited {days} day{'s' if days != 1 else ''} ago"
+    if edits_since_last_check is not None:
+        label += (
+            f" (+{edits_since_last_check} edit"
+            f"{'s' if edits_since_last_check != 1 else ''} "
+            "since last check)"
+        )
+
     return {"icon": icon, "label": label, "category": category}
 
 
@@ -111,7 +125,10 @@ def generate_beps_table(
     if status_file is not None:
         raw_status = load_bep_status(status_file)
         status = {
-            number: bep_activity_badge(entry.get("last_modified"))
+            number: bep_activity_badge(
+                entry.get("last_modified"),
+                entry.get("edits_since_last_check"),
+            )
             for number, entry in raw_status.items()
         }
 
@@ -126,7 +143,9 @@ def generate_beps_status_summary(
     """Render a one-line summary of how fresh the draft BEPs' docs are."""
     beps = yaml.load(WEBSITE_DATA_DIR / "beps" / beps_file) or []
     draft_numbers = [
-        bep["number"] for bep in beps if bep.get("pull_request_created") is None
+        bep["number"]
+        for bep in beps
+        if bep.get("pull_request_created") is None
     ]
 
     raw_status = load_bep_status(status_file)
@@ -136,7 +155,9 @@ def generate_beps_status_summary(
     for number in draft_numbers:
         entry = raw_status.get(number, {})
         checked_at = checked_at or entry.get("checked_at")
-        badge = bep_activity_badge(entry.get("last_modified"))
+        badge = bep_activity_badge(
+            entry.get("last_modified"), entry.get("edits_since_last_check")
+        )
         counts[badge["category"]] += 1
 
     env = return_jinja_env()
